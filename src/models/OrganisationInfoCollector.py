@@ -3,33 +3,46 @@ from bs4 import BeautifulSoup
 
 
 class OrganisationInfoCollector:
-    def __init__(self, url):
-        self._url = url if 'http://zakupki.gov.ru' in url else 'http://zakupki.gov.ru' + url
 
-    def run(self):
-        html_code = utils.get_html_resp(self._url)
+    @staticmethod
+    def run(self, url):
+        url = url if 'http://zakupki.gov.ru' in url else 'http://zakupki.gov.ru' + url
+        html_code = utils.get_html_resp(url)
         clear_html_code = BeautifulSoup(html_code, "html5lib")
         title = clear_html_code.head.title.getText()
-        notice_tabs = clear_html_code.find("div", {"class": "noticeTabBox"}).findAll("div")
+        notice_tabs = clear_html_code.findAll("div", {"class": "noticeTabBox"})[-1].findAll("div")
+        if len(list(notice_tabs)) < 2:
+            return False
         if title == "Сведения закупки":
-            self.get_data_from_purchase_info(notice_tabs[1])
-        elif title == "":
-            self.get_data_from_general_info(notice_tabs[1].findAll("tr"), notice_tabs[2])
+            return self.get_data_from_purchase_info(notice_tabs[1])
+        elif title == "Общая информация":
+            return self.get_data_from_general_info(notice_tabs[1].findAll("tr"), notice_tabs[2].findAll("tr"))
+        elif "Учетная карточка организации":
+            return False
 
-    def get_data_from_purchase_info(self, purchase_info):
+    @staticmethod
+    def get_data_from_purchase_info(purchase_info):
         result_dict = {}
         organisation_info = purchase_info.findAll("tbody")[0].findAll("tr")
-        result_dict["name"] = organisation_info[0].findAll("td")[1].getText() if not \
-            organisation_info[0].findAll("td")[1].a else organisation_info[0].findAll("td")[1].a.getText()
+        result_dict["name"] = str(organisation_info[0].findAll("td")[1].getText()) if not \
+            organisation_info[0].findAll("td")[1].a else str(organisation_info[0].findAll("td")[1].a.getText())
         for item in organisation_info:
             if "Ответственное должностное лицо" in item.findAll("td")[0].getText():
-                result_dict["person"] = item.findAll("td")[1].getText()
+                result_dict["person"] = str(item.findAll("td")[1].getText().strip())
             elif "Адрес электронной почты" in item.findAll("td")[0].getText():
-                result_dict["email"] = item.findAll("td")[1].getText()
+                result_dict["email"] = str(item.findAll("td")[1].getText().strip())
         print(result_dict)
+        return result_dict
 
-    def get_data_from_general_info(self, organisation_info, person_info):
+    @staticmethod
+    def get_data_from_general_info(organisation_info, person_info):
         result_dict = {}
-        result_dict["name"] = organisation_info[0].findAll("td")[1].getText() if not \
-            organisation_info[0].findAll("td")[1].a else organisation_info[0].findAll("td")[1].a.getText()
+        result_dict["name"] = str(organisation_info[0].findAll("td")[1].getText()) if not \
+            organisation_info[0].findAll("td")[1].a else str(organisation_info[0].findAll("td")[1].a.getText())
+        for item in person_info:
+            if "Контактное лицо" in item.findAll("td")[0].getText():
+                result_dict["person"] = str(item.findAll("td")[1].getText().strip())
+            elif "Электронная почта" in item.findAll("td")[0].getText():
+                result_dict["email"] = str(item.findAll("td")[1].getText().strip())
         print(result_dict)
+        return result_dict

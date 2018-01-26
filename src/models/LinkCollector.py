@@ -11,5 +11,4 @@ class LinkCollector:
         clear_html_code = BeautifulSoup(html_code, "html5lib")
         theatre_cards = clear_html_code.html.body.findAll("div", {"class": "registerBox"})
         cards_links = list(card.find("td", {"class": "descriptTenderTd"}).a["href"] for card in theatre_cards)
-        print(cards_links)
         return cards_links
